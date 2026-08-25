@@ -1,32 +1,96 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
-import type { CommonUpstreamMatch, ProductRow } from "@/lib/types";
+import type { CommonUpstreamMatch, NodeLabel } from "@/lib/types";
+
+export type CommonUpstreamChip = {
+  id: string;
+  label: string;
+};
+
+export function useCommonUpstreamSelection<T extends { id: string }>(
+  rows: T[],
+  options: {
+    label: NodeLabel;
+    noun: string;
+    chip: (row: T) => string;
+  },
+) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const chips = selectedIds.map((id) => {
+    const row = rows.find((item) => item.id === id);
+    return {
+      id,
+      label: row ? options.chip(row) : id,
+    };
+  });
+
+  const selectionProps = {
+    selectable: true as const,
+    selectedIds,
+    onSelectedIdsChange: setSelectedIds,
+    selectionActions: (
+      <>
+        <button
+          type="button"
+          disabled={selectedIds.length < 2}
+          onClick={() => setModalOpen(true)}
+          className="rounded-full bg-ink px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-accent disabled:opacity-40"
+        >
+          Find common upstream
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelectedIds([])}
+          className="text-xs font-medium text-muted underline-offset-2 hover:text-ink hover:underline"
+        >
+          Clear selection
+        </button>
+      </>
+    ) as ReactNode,
+  };
+
+  const modal = (
+    <CommonUpstreamModal
+      open={modalOpen}
+      onClose={() => setModalOpen(false)}
+      label={options.label}
+      noun={options.noun}
+      entityIds={selectedIds}
+      chips={chips}
+    />
+  );
+
+  return { selectionProps, modal };
+}
 
 export function CommonUpstreamModal({
   open,
   onClose,
-  products,
-  productIds,
+  label,
+  noun,
+  entityIds = [],
+  chips = [],
 }: {
   open: boolean;
   onClose: () => void;
-  products: ProductRow[];
-  productIds: string[];
+  label: NodeLabel;
+  noun: string;
+  entityIds?: string[];
+  chips?: CommonUpstreamChip[];
 }) {
   const [mounted, setMounted] = useState(false);
   const [matches, setMatches] = useState<CommonUpstreamMatch[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const selectedProducts = useMemo(
-    () =>
-      productIds
-        .map((id) => products.find((product) => product.id === id))
-        .filter((product): product is ProductRow => Boolean(product)),
-    [products, productIds],
-  );
+  const idsKey = entityIds.join(",");
 
   useEffect(() => {
     setMounted(true);
@@ -47,19 +111,19 @@ export function CommonUpstreamModal({
   }, [open, onClose]);
 
   useEffect(() => {
-    if (!open || productIds.length < 2) return;
+    if (!open || entityIds.length < 2) return;
 
     let active = true;
     setLoading(true);
     setError(null);
     setMatches(null);
 
-    const ids = [...productIds];
+    const ids = idsKey.split(",").filter(Boolean);
 
     fetch("/api/trace/common", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productIds: ids }),
+      body: JSON.stringify({ ids, label }),
     })
       .then(async (response) => {
         const payload = await response.json();
@@ -84,8 +148,7 @@ export function CommonUpstreamModal({
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch when selection identity changes
-  }, [open, productIds.join(",")]);
+  }, [open, idsKey, label, entityIds.length]);
 
   if (!mounted || !open) return null;
 
@@ -112,7 +175,7 @@ export function CommonUpstreamModal({
               Common upstream
             </h2>
             <p className="mt-1 text-sm text-muted">
-              Nodes shared by all {productIds.length} selected products.
+              Nodes shared by all {entityIds.length} selected {noun}.
             </p>
           </div>
           <button
@@ -134,15 +197,15 @@ export function CommonUpstreamModal({
 
         <div className="border-b border-border px-5 py-3">
           <p className="font-mono text-[10px] tracking-wider text-muted uppercase">
-            Selected products
+            Selected {noun}
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {selectedProducts.map((product) => (
+            {chips.map((chip) => (
               <span
-                key={product.id}
+                key={chip.id}
                 className="rounded-full bg-accent-soft px-2.5 py-1 font-mono text-[10px] text-accent"
               >
-                {product.sku}
+                {chip.label}
               </span>
             ))}
           </div>
@@ -164,7 +227,10 @@ export function CommonUpstreamModal({
           {matches ? (
             matches.length === 0 ? (
               <p className="text-sm text-muted">
-                No shared upstream nodes across these products.
+                No shared upstream nodes across these {noun}.
+                {label === "Supplier"
+                  ? " Suppliers sit at the top of the supply chain."
+                  : ""}
               </p>
             ) : (
               <ul className="space-y-3">

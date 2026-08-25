@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CommonUpstreamModal } from "@/components/dashboard/CommonUpstreamModal";
+import { useCommonUpstreamSelection } from "@/components/dashboard/CommonUpstreamModal";
 import { EventPills, SmartDataTable } from "@/components/dashboard/DataTable";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { ErrorState, LoadingState } from "@/components/States";
@@ -139,6 +139,11 @@ export function SuppliersTable({
   const [rows, setRows] = useState<SupplierRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const common = useCommonUpstreamSelection(rows, {
+    label: "Supplier",
+    noun: "suppliers",
+    chip: (row) => row.name,
+  });
 
   const load = () => {
     setLoading(true);
@@ -186,12 +191,14 @@ export function SuppliersTable({
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
+    <>
     <SmartDataTable
       rows={rows}
       toolbarLabel="Suppliers table"
       searchPlaceholder="Search supplier name, location, ID…"
       empty="No suppliers match your search or filters."
       onRowClick={(supplier) => router.push(`/suppliers/${supplier.id}`)}
+      {...common.selectionProps}
       searchFn={(supplier, q) =>
         [
           supplier.id,
@@ -251,6 +258,8 @@ export function SuppliersTable({
         },
       ]}
     />
+    {common.modal}
+    </>
   );
 }
 
@@ -263,6 +272,11 @@ export function MaterialsTable({
   const [rows, setRows] = useState<MaterialRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const common = useCommonUpstreamSelection(rows, {
+    label: "Material",
+    noun: "materials",
+    chip: (row) => row.name,
+  });
 
   const load = () => {
     setLoading(true);
@@ -318,12 +332,14 @@ export function MaterialsTable({
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
+    <>
     <SmartDataTable
       rows={rows}
       toolbarLabel="Materials table"
       searchPlaceholder="Search material, category, supplier…"
       empty="No materials match your search or filters."
       onRowClick={(material) => router.push(`/materials/${material.id}`)}
+      {...common.selectionProps}
       searchFn={(material, q) =>
         [
           material.id,
@@ -390,6 +406,8 @@ export function MaterialsTable({
         },
       ]}
     />
+    {common.modal}
+    </>
   );
 }
 
@@ -402,6 +420,11 @@ export function BatchesTable({
   const [rows, setRows] = useState<BatchRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const common = useCommonUpstreamSelection(rows, {
+    label: "MaterialBatch",
+    noun: "batches",
+    chip: (row) => row.batchNumber,
+  });
 
   const load = () => {
     setLoading(true);
@@ -457,12 +480,14 @@ export function BatchesTable({
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
+    <>
     <SmartDataTable
       rows={rows}
       toolbarLabel="Batches table"
       searchPlaceholder="Search batch number, material, supplier…"
       empty="No batches match your search or filters."
       onRowClick={(batch) => router.push(`/batches/${batch.id}`)}
+      {...common.selectionProps}
       searchFn={(batch, q) =>
         [
           batch.id,
@@ -531,6 +556,8 @@ export function BatchesTable({
         },
       ]}
     />
+    {common.modal}
+    </>
   );
 }
 
@@ -543,6 +570,11 @@ export function ProductionTable({
   const [rows, setRows] = useState<ProductionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const common = useCommonUpstreamSelection(rows, {
+    label: "ProductionBatch",
+    noun: "production batches",
+    chip: (row) => row.batchNumber,
+  });
 
   const load = () => {
     setLoading(true);
@@ -594,12 +626,14 @@ export function ProductionTable({
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
+    <>
     <SmartDataTable
       rows={rows}
       toolbarLabel="Production table"
       searchPlaceholder="Search production batch, facility, product…"
       empty="No production batches match your search or filters."
       onRowClick={(row) => router.push(`/production/${row.id}`)}
+      {...common.selectionProps}
       searchFn={(row, q) =>
         [
           row.id,
@@ -674,6 +708,8 @@ export function ProductionTable({
         },
       ]}
     />
+    {common.modal}
+    </>
   );
 }
 
@@ -686,8 +722,11 @@ export function ProductsTable({
   const [rows, setRows] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [modalOpen, setModalOpen] = useState(false);
+  const common = useCommonUpstreamSelection(rows, {
+    label: "Product",
+    noun: "products",
+    chip: (row) => row.sku,
+  });
 
   const load = () => {
     setLoading(true);
@@ -742,28 +781,7 @@ export function ProductsTable({
         searchPlaceholder="Search SKU, name, batch…"
         empty="No products match your search or filters."
         onRowClick={(product) => router.push(`/products/${product.id}`)}
-        selectable
-        selectedIds={selectedIds}
-        onSelectedIdsChange={setSelectedIds}
-        selectionActions={
-          <>
-            <button
-              type="button"
-              disabled={selectedIds.length < 2}
-              onClick={() => setModalOpen(true)}
-              className="rounded-full bg-ink px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-accent disabled:opacity-40"
-            >
-              Find common upstream
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedIds([])}
-              className="text-xs font-medium text-muted underline-offset-2 hover:text-ink hover:underline"
-            >
-              Clear selection
-            </button>
-          </>
-        }
+        {...common.selectionProps}
         searchFn={(product, q) =>
           [
             product.id,
@@ -824,12 +842,7 @@ export function ProductsTable({
           },
         ]}
       />
-      <CommonUpstreamModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        products={rows}
-        productIds={selectedIds}
-      />
+      {common.modal}
     </>
   );
 }
@@ -843,6 +856,11 @@ export function ShipmentsTable({
   const [rows, setRows] = useState<ShipmentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const common = useCommonUpstreamSelection(rows, {
+    label: "Shipment",
+    noun: "shipments",
+    chip: (row) => row.id,
+  });
 
   const load = () => {
     setLoading(true);
@@ -890,12 +908,14 @@ export function ShipmentsTable({
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
+    <>
     <SmartDataTable
       rows={rows}
       toolbarLabel="Shipments table"
       searchPlaceholder="Search shipment, product, customer…"
       empty="No shipments match your search or filters."
       onRowClick={(shipment) => router.push(`/shipments/${shipment.id}`)}
+      {...common.selectionProps}
       searchFn={(shipment, q) =>
         [
           shipment.id,
@@ -968,6 +988,8 @@ export function ShipmentsTable({
         },
       ]}
     />
+    {common.modal}
+    </>
   );
 }
 
@@ -980,6 +1002,11 @@ export function OrdersTable({
   const [rows, setRows] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const common = useCommonUpstreamSelection(rows, {
+    label: "Order",
+    noun: "orders",
+    chip: (row) => row.orderNumber,
+  });
 
   const load = () => {
     setLoading(true);
@@ -1027,12 +1054,14 @@ export function OrdersTable({
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
+    <>
     <SmartDataTable
       rows={rows}
       toolbarLabel="Orders table"
       searchPlaceholder="Search order number, customer, status…"
       empty="No orders match your search or filters."
       onRowClick={(order) => router.push(`/orders/${order.id}`)}
+      {...common.selectionProps}
       searchFn={(order, q) =>
         [
           order.id,
@@ -1100,6 +1129,8 @@ export function OrdersTable({
         },
       ]}
     />
+    {common.modal}
+    </>
   );
 }
 
@@ -1112,6 +1143,11 @@ export function CustomersTable({
   const [rows, setRows] = useState<CustomerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const common = useCommonUpstreamSelection(rows, {
+    label: "Customer",
+    noun: "customers",
+    chip: (row) => row.name,
+  });
 
   const load = () => {
     setLoading(true);
@@ -1159,12 +1195,14 @@ export function CustomersTable({
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
+    <>
     <SmartDataTable
       rows={rows}
       toolbarLabel="Customers table"
       searchPlaceholder="Search customer name, region, ID…"
       empty="No customers match your search or filters."
       onRowClick={(customer) => router.push(`/customers/${customer.id}`)}
+      {...common.selectionProps}
       searchFn={(customer, q) =>
         [
           customer.id,
@@ -1224,5 +1262,7 @@ export function CustomersTable({
         },
       ]}
     />
+    {common.modal}
+    </>
   );
 }

@@ -180,14 +180,15 @@ export async function reverseTrace(productId: string): Promise<TraceStep[]> {
 }
 
 export async function findCommonUpstream(
-  productIds: string[],
+  ids: string[],
+  label: NodeLabel,
 ): Promise<CommonUpstreamMatch[]> {
   const uniqueIds = Array.from(
-    new Set(productIds.map((id) => id.trim()).filter(Boolean)),
+    new Set(ids.map((id) => id.trim()).filter(Boolean)),
   );
   if (uniqueIds.length < 2) {
     throw new AppError(
-      "Select at least two products to find shared upstream nodes.",
+      "Select at least two rows to find shared upstream nodes.",
       400,
       "BAD_REQUEST",
     );
@@ -195,7 +196,8 @@ export async function findCommonUpstream(
 
   return withSession(async (session) => {
     const result = await session.run(COMMON_UPSTREAM, {
-      productIds: uniqueIds,
+      ids: uniqueIds,
+      label,
     });
 
     return result.records.map((record) => {
@@ -204,13 +206,13 @@ export async function findCommonUpstream(
         properties: Record<string, unknown>;
       };
       const labels = (record.get("labels") as string[]) ?? node.labels ?? [];
-      const label = pickLabel(labels) as NodeLabel;
+      const matchLabel = pickLabel(labels) as NodeLabel;
       const properties = propsOf(node.properties);
       return {
         id: String(properties.id ?? ""),
-        label,
-        title: nodeTitle(label, properties),
-        subtitle: nodeSubtitle(label, properties),
+        label: matchLabel,
+        title: nodeTitle(matchLabel, properties),
+        subtitle: nodeSubtitle(matchLabel, properties),
         sharedBy: toNumber(record.get("sharedBy")),
         properties,
       };

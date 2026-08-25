@@ -75,21 +75,30 @@ LIMIT 1
 `;
 
 export const COMMON_UPSTREAM = `
-UNWIND $productIds AS productId
-MATCH (p:Product {id: productId})
-MATCH (common)-[*1..5]->(p)
-WHERE common:MaterialBatch OR common:Supplier OR common:ProductionBatch OR common:Material
-WITH common, count(DISTINCT p) AS sharedBy
-WHERE sharedBy = size($productIds)
+UNWIND $ids AS entityId
+MATCH (n {id: entityId})
+WHERE $label IN labels(n)
+MATCH (common)-[:SUPPLIES|HAS_BATCH|USED_IN|PRODUCES|SHIPPED_IN|FULFILLS|PLACED_BY|AFFECTS*1..7]->(n)
+WHERE (
+  common:Supplier OR common:Material OR common:MaterialBatch OR common:ProductionBatch
+  OR common:Product OR common:Shipment OR common:Order OR common:QualityEvent
+)
+AND NOT common.id IN $ids
+WITH common, count(DISTINCT n) AS sharedBy
+WHERE sharedBy = size($ids)
 RETURN common, labels(common) AS labels, sharedBy
 ORDER BY
   CASE
-    WHEN 'MaterialBatch' IN labels(common) THEN 0
-    WHEN 'ProductionBatch' IN labels(common) THEN 1
+    WHEN 'QualityEvent' IN labels(common) THEN 0
+    WHEN 'Supplier' IN labels(common) THEN 1
     WHEN 'Material' IN labels(common) THEN 2
-    ELSE 3
+    WHEN 'MaterialBatch' IN labels(common) THEN 3
+    WHEN 'ProductionBatch' IN labels(common) THEN 4
+    WHEN 'Product' IN labels(common) THEN 5
+    WHEN 'Shipment' IN labels(common) THEN 6
+    ELSE 7
   END
-LIMIT 10
+LIMIT 15
 `;
 
 export const LIST_SUPPLIERS = `
