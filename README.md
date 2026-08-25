@@ -10,7 +10,7 @@ When a material batch is compromised, TRACE walks the graph to answer: what prod
 
 | | |
 | --- | --- |
-| **Hosted app** | _Add your Vercel (or other) URL here after deploy_ |
+| **Hosted app** | [https://wexa-ai-test.vercel.app/](https://wexa-ai-test.vercel.app/) |
 | **Screen recording** | _Add a short Loom / video link here_ |
 | **Local** | [http://localhost:3000](http://localhost:3000) after setup below |
 
