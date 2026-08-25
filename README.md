@@ -11,7 +11,7 @@ When a material batch is compromised, TRACE walks the graph to answer: what prod
 | | |
 | --- | --- |
 | **Hosted app** | [https://wexa-ai-test.vercel.app/](https://wexa-ai-test.vercel.app/) |
-| **Screen recording** | _Add a short Loom / video link here_ |
+| **Screen recording** | [Loom walkthrough](https://www.loom.com/share/551daa0c348f4e5dadd187502dd667a5) |
 | **Local** | [http://localhost:3000](http://localhost:3000) after setup below |
 
 Keep your CognoDB free instance running until reviewers finish evaluating the submission.
