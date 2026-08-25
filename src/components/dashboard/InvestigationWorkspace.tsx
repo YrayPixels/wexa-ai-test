@@ -154,13 +154,14 @@ export function InvestigationWorkspace({
           <ImpactHeroCard event={detail.event} impact={detail.impact} />
         </div>
         <div className="lg:col-span-5" id="impact-graph">
-          <div className="h-full min-h-[320px]">
-            <SupplyChainGraphView
-              graph={detail.graph}
-              selectedId={nodeId}
-              onSelect={setNodeId}
-            />
-          </div>
+          <SupplyChainGraphView
+            graph={detail.graph}
+            selectedId={nodeId}
+            focusId={detail.event.id}
+            onSelect={setNodeId}
+            title="Impact path"
+            subtitle="Blast radius from this quality event"
+          />
         </div>
         <div className="lg:col-span-3">
           <EventStatusCard event={detail.event} />

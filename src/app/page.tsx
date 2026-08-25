@@ -5,9 +5,13 @@ export const dynamic = "force-dynamic";
 
 const sections = new Set<DashboardSection>([
   "events",
+  "suppliers",
+  "materials",
   "batches",
+  "production",
   "products",
   "shipments",
+  "orders",
   "customers",
 ]);
 

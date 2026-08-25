@@ -73,9 +73,13 @@ export interface EntityDetail {
 
 export type DashboardSection =
   | "events"
+  | "suppliers"
+  | "materials"
   | "batches"
+  | "production"
   | "products"
   | "shipments"
+  | "orders"
   | "customers";
 
 export interface LinkedEventRef {
@@ -83,6 +87,24 @@ export interface LinkedEventRef {
   type: string;
   severity: Severity;
   status?: EventStatus;
+}
+
+export interface SupplierRow {
+  id: string;
+  name: string;
+  location: string;
+  materialCount: number;
+  batchCount: number;
+  events: LinkedEventRef[];
+}
+
+export interface MaterialRow {
+  id: string;
+  name: string;
+  category: string;
+  supplierName: string | null;
+  batchCount: number;
+  events: LinkedEventRef[];
 }
 
 export interface BatchRow {
@@ -94,6 +116,17 @@ export interface BatchRow {
   materialName: string;
   supplierName: string;
   event: LinkedEventRef | null;
+}
+
+export interface ProductionRow {
+  id: string;
+  batchNumber: string;
+  productionDate: string;
+  facility: string;
+  productSku: string | null;
+  productName: string | null;
+  materialBatch: string | null;
+  events: LinkedEventRef[];
 }
 
 export interface ProductRow {
@@ -118,6 +151,16 @@ export interface ShipmentRow {
   events: LinkedEventRef[];
 }
 
+export interface OrderRow {
+  id: string;
+  orderNumber: string;
+  orderDate: string;
+  status: string;
+  customerName: string | null;
+  shipmentCount: number;
+  events: LinkedEventRef[];
+}
+
 export interface CustomerRow {
   id: string;
   name: string;
@@ -127,7 +170,15 @@ export interface CustomerRow {
   events: LinkedEventRef[];
 }
 
-export type CatalogKind = "batches" | "products" | "shipments" | "customers";
+export type CatalogKind =
+  | "suppliers"
+  | "materials"
+  | "batches"
+  | "production"
+  | "products"
+  | "shipments"
+  | "orders"
+  | "customers";
 
 export interface EntityConnection {
   type: string;

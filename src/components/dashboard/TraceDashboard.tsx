@@ -8,19 +8,22 @@ import {
   BatchesTable,
   CustomersTable,
   EventsTable,
+  MaterialsTable,
+  OrdersTable,
   ProductsTable,
+  ProductionTable,
   ShipmentsTable,
+  SuppliersTable,
 } from "@/components/dashboard/CatalogTables";
-import type { BatchRow, DashboardSection, QualityEvent } from "@/lib/types";
+import type { DashboardSection, QualityEvent } from "@/lib/types";
 
-function syncUrl(section: DashboardSection, eventId: string | null, batchId: string | null) {
+function syncUrl(section: DashboardSection, eventId: string | null) {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
   url.searchParams.set("section", section);
   if (eventId) url.searchParams.set("event", eventId);
   else url.searchParams.delete("event");
-  if (batchId) url.searchParams.set("batch", batchId);
-  else url.searchParams.delete("batch");
+  url.searchParams.delete("batch");
   const next = `${url.pathname}?${url.searchParams.toString()}`;
   const current = `${window.location.pathname}${window.location.search}`;
   if (next !== current) {
@@ -31,7 +34,6 @@ function syncUrl(section: DashboardSection, eventId: string | null, batchId: str
 export function TraceDashboard({
   initialSection = "events",
   initialEventId,
-  initialBatchId,
 }: {
   initialSection?: DashboardSection;
   initialEventId?: string;
@@ -44,7 +46,6 @@ export function TraceDashboard({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(
     initialEventId ?? null,
   );
-  const [selectedBatch, setSelectedBatch] = useState<BatchRow | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const bootstrapped = useRef(false);
 
@@ -86,8 +87,8 @@ export function TraceDashboard({
   }, [loadEvents]);
 
   useEffect(() => {
-    syncUrl(section, selectedEventId, selectedBatch?.id ?? initialBatchId ?? null);
-  }, [section, selectedEventId, selectedBatch, initialBatchId]);
+    syncUrl(section, selectedEventId);
+  }, [section, selectedEventId]);
 
   const selectedEvent = useMemo(
     () => events.find((e) => e.id === selectedEventId) ?? null,
@@ -96,40 +97,13 @@ export function TraceDashboard({
 
   const openEvent = (eventId: string) => {
     setSelectedEventId(eventId);
-    setSelectedBatch(null);
     setSection("events");
   };
 
   const openSection = (next: DashboardSection) => {
     setSection(next);
     if (next !== "events") setSelectedEventId(null);
-    if (next !== "batches") setSelectedBatch(null);
   };
-
-  const onSelectBatch = (batch: BatchRow) => {
-    setSelectedBatch(batch);
-    if (batch.event) {
-      setSelectedEventId(batch.event.id);
-    } else {
-      setSelectedEventId(null);
-    }
-  };
-
-  const topCrumb =
-    section === "events"
-      ? selectedEventId
-      : section === "batches"
-        ? selectedBatch?.batchNumber ?? null
-        : null;
-
-  const topStatus =
-    section === "events"
-      ? selectedEvent?.status ?? null
-      : selectedBatch?.event
-        ? `Linked to ${selectedBatch.event.id}`
-        : selectedBatch
-          ? "No linked event"
-          : null;
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -143,18 +117,13 @@ export function TraceDashboard({
       <div className="flex min-w-0 flex-1 flex-col">
         <DashboardTopBar
           section={section}
-          crumb={topCrumb}
-          status={topStatus}
+          crumb={section === "events" ? selectedEventId : null}
+          status={section === "events" ? selectedEvent?.status ?? null : null}
           actionLabel={
-            section === "events" && selectedEventId
-              ? "View impact graph"
-              : section === "batches" && selectedBatch?.event
-                ? "View batch impact"
-                : null
+            section === "events" && selectedEventId ? "View impact graph" : null
           }
           onAction={
-            (section === "events" && selectedEventId) ||
-            (section === "batches" && selectedBatch?.event)
+            section === "events" && selectedEventId
               ? () => {
                   document
                     .getElementById("impact-graph")
@@ -186,40 +155,43 @@ export function TraceDashboard({
             </>
           ) : null}
 
+          {section === "suppliers" ? (
+            <>
+              <SectionIntro
+                title="Suppliers"
+                body="Upstream vendors in the graph. Open a supplier to see materials, batches, and any quality-event blast radius."
+              />
+              <SuppliersTable onOpenEvent={openEvent} />
+            </>
+          ) : null}
+
+          {section === "materials" ? (
+            <>
+              <SectionIntro
+                title="Materials"
+                body="Raw ingredients and inputs. Filter by category or supplier, then open a row for batches and linked events."
+              />
+              <MaterialsTable onOpenEvent={openEvent} />
+            </>
+          ) : null}
+
           {section === "batches" ? (
             <>
               <SectionIntro
                 title="Material batches"
-                body="Browse ingredient and component batches. If a batch is linked to a quality event, open it to see how far the contamination reaches."
+                body="Search and filter batches, then open a row for full detail, graph connections, and any linked quality-event impact."
               />
-              <BatchesTable
-                selectedId={selectedBatch?.id ?? null}
-                onSelectBatch={onSelectBatch}
-                onOpenEvent={openEvent}
+              <BatchesTable onOpenEvent={openEvent} />
+            </>
+          ) : null}
+
+          {section === "production" ? (
+            <>
+              <SectionIntro
+                title="Production batches"
+                body="Manufacturing runs that consume material batches and produce finished goods. Open a row for facility and impact detail."
               />
-              {selectedBatch?.event ? (
-                <InvestigationWorkspace
-                  eventId={selectedBatch.event.id}
-                  banner={`Batch ${selectedBatch.batchNumber} is linked to ${selectedBatch.event.id} (${selectedBatch.event.type}). Downstream impact is shown below.`}
-                />
-              ) : selectedBatch ? (
-                <div className="dashboard-card px-5 py-6 animate-fade-up">
-                  <p className="font-mono text-[10px] tracking-[0.16em] text-muted uppercase">
-                    Batch detail
-                  </p>
-                  <h3 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-semibold text-ink">
-                    {selectedBatch.batchNumber}
-                  </h3>
-                  <p className="mt-2 text-sm text-muted">
-                    {selectedBatch.materialName} from {selectedBatch.supplierName}. Status:{" "}
-                    {selectedBatch.status}.
-                  </p>
-                  <p className="mt-4 rounded-xl bg-surface-muted px-4 py-3 text-sm text-muted">
-                    No quality event is linked to this batch, so there is no recall blast
-                    radius to display.
-                  </p>
-                </div>
-              ) : null}
+              <ProductionTable onOpenEvent={openEvent} />
             </>
           ) : null}
 
@@ -227,7 +199,7 @@ export function TraceDashboard({
             <>
               <SectionIntro
                 title="Products"
-                body="Finished goods in the graph. Linked-event chips mark products that sit downstream of a quality incident."
+                body="Finished goods in the graph. Click a row for the product page, or use a linked-event chip to jump into an investigation."
               />
               <ProductsTable onOpenEvent={openEvent} />
             </>
@@ -237,9 +209,19 @@ export function TraceDashboard({
             <>
               <SectionIntro
                 title="Shipments"
-                body="Outbound shipments and the customers they fulfill. Affected lanes show their upstream quality event."
+                body="Outbound shipments with search, status filters, and row-level detail pages for connection tracing."
               />
               <ShipmentsTable onOpenEvent={openEvent} />
+            </>
+          ) : null}
+
+          {section === "orders" ? (
+            <>
+              <SectionIntro
+                title="Orders"
+                body="Customer orders fulfilled by shipments. Open a row for customer links and any quality-event impact."
+              />
+              <OrdersTable onOpenEvent={openEvent} />
             </>
           ) : null}
 
@@ -247,7 +229,7 @@ export function TraceDashboard({
             <>
               <SectionIntro
                 title="Customers"
-                body="Recipients who may be in the blast radius of a contaminated batch."
+                body="Recipients who may sit in a blast radius. Open any customer for orders, shipments, and linked events."
               />
               <CustomersTable onOpenEvent={openEvent} />
             </>

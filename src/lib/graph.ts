@@ -160,6 +160,62 @@ export function graphFromPaths(
   };
 }
 
+/** Merge 1-hop neighbor links into a graph so detail pages always show direct connections. */
+export function mergeConnectionsIntoGraph(
+  graph: SupplyChainGraph,
+  center: { id: string; label: NodeLabel; title: string; subtitle?: string; data: Record<string, unknown> },
+  connections: Array<{
+    type: string;
+    direction: "IN" | "OUT";
+    id: string;
+    label: NodeLabel;
+    title: string;
+    subtitle?: string;
+  }>,
+): SupplyChainGraph {
+  const nodes = new Map(graph.nodes.map((n) => [n.id, n]));
+  const edges = new Map(graph.edges.map((e) => [e.id, e]));
+
+  if (!nodes.has(center.id)) {
+    nodes.set(center.id, {
+      id: center.id,
+      label: center.label,
+      title: center.title,
+      subtitle: center.subtitle,
+      data: center.data,
+    });
+  }
+
+  for (const connection of connections) {
+    if (!connection.id) continue;
+    if (!nodes.has(connection.id)) {
+      nodes.set(connection.id, {
+        id: connection.id,
+        label: connection.label,
+        title: connection.title,
+        subtitle: connection.subtitle,
+        data: {},
+      });
+    }
+    const source = connection.direction === "OUT" ? center.id : connection.id;
+    const target = connection.direction === "OUT" ? connection.id : center.id;
+    const edgeId = `${source}-${connection.type}-${target}`;
+    if (!edges.has(edgeId)) {
+      edges.set(edgeId, {
+        id: edgeId,
+        source,
+        target,
+        type: connection.type,
+      });
+    }
+  }
+
+  return {
+    nodes: Array.from(nodes.values()),
+    edges: Array.from(edges.values()),
+  };
+}
+
 export function layoutHint(label: NodeLabel): number {
   switch (label) {
     case "QualityEvent":

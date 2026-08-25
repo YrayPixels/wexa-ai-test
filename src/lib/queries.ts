@@ -88,6 +88,46 @@ ORDER BY
 LIMIT 10
 `;
 
+export const LIST_SUPPLIERS = `
+MATCH (supplier:Supplier)
+OPTIONAL MATCH (supplier)-[:SUPPLIES]->(material:Material)
+OPTIONAL MATCH (material)-[:HAS_BATCH]->(batch:MaterialBatch)
+OPTIONAL MATCH (event:QualityEvent)-[:AFFECTS]->(batch)
+WITH supplier,
+  count(DISTINCT material) AS materialCount,
+  count(DISTINCT batch) AS batchCount,
+  collect(DISTINCT event { .id, .type, .severity }) AS events
+RETURN supplier {
+  .id, .name, .location
+} AS supplier,
+materialCount,
+batchCount,
+[e IN events WHERE e IS NOT NULL] AS events
+ORDER BY
+  CASE WHEN size(events) > 0 THEN 0 ELSE 1 END,
+  supplier.name
+`;
+
+export const LIST_MATERIALS = `
+MATCH (material:Material)
+OPTIONAL MATCH (supplier:Supplier)-[:SUPPLIES]->(material)
+OPTIONAL MATCH (material)-[:HAS_BATCH]->(batch:MaterialBatch)
+OPTIONAL MATCH (event:QualityEvent)-[:AFFECTS]->(batch)
+WITH material,
+  supplier,
+  count(DISTINCT batch) AS batchCount,
+  collect(DISTINCT event { .id, .type, .severity }) AS events
+RETURN material {
+  .id, .name, .category
+} AS material,
+supplier.name AS supplierName,
+batchCount,
+[e IN events WHERE e IS NOT NULL] AS events
+ORDER BY
+  CASE WHEN size(events) > 0 THEN 0 ELSE 1 END,
+  material.name
+`;
+
 export const LIST_BATCHES = `
 MATCH (material:Material)-[:HAS_BATCH]->(batch:MaterialBatch)
 OPTIONAL MATCH (supplier:Supplier)-[:SUPPLIES]->(material)
@@ -108,6 +148,23 @@ ORDER BY
     ELSE 2
   END,
   batch.batchNumber
+`;
+
+export const LIST_PRODUCTION = `
+MATCH (production:ProductionBatch)
+OPTIONAL MATCH (batch:MaterialBatch)-[:USED_IN]->(production)
+OPTIONAL MATCH (production)-[:PRODUCES]->(product:Product)
+OPTIONAL MATCH (event:QualityEvent)-[:AFFECTS]->(batch)
+RETURN production {
+  .id, .batchNumber, .productionDate, .facility
+} AS production,
+product.sku AS productSku,
+product.name AS productName,
+batch.batchNumber AS materialBatch,
+collect(DISTINCT event { .id, .type, .severity }) AS events
+ORDER BY
+  CASE WHEN size([e IN events WHERE e IS NOT NULL]) > 0 THEN 0 ELSE 1 END,
+  production.batchNumber
 `;
 
 export const LIST_PRODUCTS = `
@@ -148,6 +205,30 @@ ORDER BY
   shipment.id
 `;
 
+export const LIST_ORDERS = `
+MATCH (order:Order)
+OPTIONAL MATCH (order)-[:PLACED_BY]->(customer:Customer)
+OPTIONAL MATCH (shipment:Shipment)-[:FULFILLS]->(order)
+OPTIONAL MATCH (product:Product)-[:SHIPPED_IN]->(shipment)
+OPTIONAL MATCH (production:ProductionBatch)-[:PRODUCES]->(product)
+OPTIONAL MATCH (batch:MaterialBatch)-[:USED_IN]->(production)
+OPTIONAL MATCH (event:QualityEvent)-[:AFFECTS]->(batch)
+WITH order,
+  customer,
+  count(DISTINCT shipment) AS shipmentCount,
+  collect(DISTINCT event { .id, .type, .severity }) AS events
+RETURN order {
+  .id, .orderNumber, .orderDate, .status
+} AS order,
+customer.name AS customerName,
+shipmentCount,
+[e IN events WHERE e IS NOT NULL] AS events
+ORDER BY
+  CASE WHEN size(events) > 0 THEN 0 ELSE 1 END,
+  order.orderDate DESC,
+  order.orderNumber
+`;
+
 export const LIST_CUSTOMERS = `
 MATCH (customer:Customer)
 OPTIONAL MATCH (order:Order)-[:PLACED_BY]->(customer)
@@ -184,47 +265,49 @@ export const ENTITY_NEIGHBORHOOD = `
 MATCH (n {id: $id})
 WHERE n:Supplier OR n:Material OR n:MaterialBatch OR n:ProductionBatch
    OR n:Product OR n:Shipment OR n:Order OR n:Customer OR n:QualityEvent
+
 OPTIONAL MATCH (n)-[r]-(m)
 WHERE m:Supplier OR m:Material OR m:MaterialBatch OR m:ProductionBatch
    OR m:Product OR m:Shipment OR m:Order OR m:Customer OR m:QualityEvent
+
 WITH n,
   collect(DISTINCT {
     type: type(r),
     direction: CASE WHEN startNode(r) = n THEN 'OUT' ELSE 'IN' END,
     neighbor: m
-  })[0..50] AS connections
-OPTIONAL MATCH path = (n)-[*1..5]-(related)
-WHERE related:Supplier OR related:Material OR related:MaterialBatch
-   OR related:ProductionBatch OR related:Product OR related:Shipment
-   OR related:Order OR related:Customer OR related:QualityEvent
+  })[0..60] AS connections
+
+OPTIONAL MATCH upPath = (upstream)-[:SUPPLIES|HAS_BATCH|AFFECTS|USED_IN|PRODUCES|SHIPPED_IN|FULFILLS|PLACED_BY*1..6]->(n)
+WHERE upstream:Supplier OR upstream:Material OR upstream:MaterialBatch
+   OR upstream:ProductionBatch OR upstream:Product OR upstream:Shipment
+   OR upstream:Order OR upstream:Customer OR upstream:QualityEvent
+
+OPTIONAL MATCH downPath = (n)-[:SUPPLIES|HAS_BATCH|USED_IN|PRODUCES|SHIPPED_IN|FULFILLS|PLACED_BY|AFFECTS*1..6]->(downstream)
+WHERE downstream:Supplier OR downstream:Material OR downstream:MaterialBatch
+   OR downstream:ProductionBatch OR downstream:Product OR downstream:Shipment
+   OR downstream:Order OR downstream:Customer OR downstream:QualityEvent
+
 RETURN n,
   labels(n) AS labels,
   connections,
-  collect(DISTINCT path)[0..35] AS paths
+  collect(DISTINCT upPath)[0..30] AS upPaths,
+  collect(DISTINCT downPath)[0..30] AS downPaths
 `;
 
 export const EVENTS_FOR_ENTITY = `
 MATCH (n {id: $id})
-WHERE n:MaterialBatch OR n:Product OR n:Shipment OR n:Customer
-   OR n:ProductionBatch OR n:Order OR n:QualityEvent
-OPTIONAL MATCH (event:QualityEvent)-[:AFFECTS]->(n)
-OPTIONAL MATCH (eventBatch:QualityEvent)-[:AFFECTS]->(n)
-  WHERE n:MaterialBatch
-OPTIONAL MATCH (eventProduct:QualityEvent)-[:AFFECTS]->(:MaterialBatch)
-  -[:USED_IN]->(:ProductionBatch)-[:PRODUCES]->(n)
-  WHERE n:Product
-OPTIONAL MATCH (eventShipment:QualityEvent)-[:AFFECTS]->(:MaterialBatch)
-  -[:USED_IN]->(:ProductionBatch)-[:PRODUCES]->(:Product)-[:SHIPPED_IN]->(n)
-  WHERE n:Shipment
-OPTIONAL MATCH (eventCustomer:QualityEvent)-[:AFFECTS]->(:MaterialBatch)
-  -[:USED_IN]->(:ProductionBatch)-[:PRODUCES]->(:Product)
-  -[:SHIPPED_IN]->(:Shipment)-[:FULFILLS]->(:Order)-[:PLACED_BY]->(n)
-  WHERE n:Customer
-OPTIONAL MATCH (eventSelf:QualityEvent)
-  WHERE n:QualityEvent AND eventSelf = n
-WITH [
-  event, eventBatch, eventProduct, eventShipment, eventCustomer, eventSelf
-] AS raw
+OPTIONAL MATCH (e1:QualityEvent)-[:AFFECTS]->(n)
+OPTIONAL MATCH (eSupplier:QualityEvent)-[:AFFECTS]->(:MaterialBatch)<-[:HAS_BATCH]-(:Material)<-[:SUPPLIES]-(n)
+OPTIONAL MATCH (eMaterial:QualityEvent)-[:AFFECTS]->(:MaterialBatch)<-[:HAS_BATCH]-(n)
+OPTIONAL MATCH (eProduction:QualityEvent)-[:AFFECTS]->(:MaterialBatch)-[:USED_IN]->(n)
+OPTIONAL MATCH (e2:QualityEvent)-[:AFFECTS]->(:MaterialBatch)-[:USED_IN]->(:ProductionBatch)-[:PRODUCES]->(n)
+OPTIONAL MATCH (e3:QualityEvent)-[:AFFECTS]->(:MaterialBatch)-[:USED_IN]->(:ProductionBatch)-[:PRODUCES]->(:Product)-[:SHIPPED_IN]->(n)
+OPTIONAL MATCH (eOrder:QualityEvent)-[:AFFECTS]->(:MaterialBatch)-[:USED_IN]->(:ProductionBatch)-[:PRODUCES]->(:Product)-[:SHIPPED_IN]->(:Shipment)-[:FULFILLS]->(n)
+OPTIONAL MATCH (e4:QualityEvent)-[:AFFECTS]->(:MaterialBatch)-[:USED_IN]->(:ProductionBatch)-[:PRODUCES]->(:Product)-[:SHIPPED_IN]->(:Shipment)-[:FULFILLS]->(:Order)-[:PLACED_BY]->(n)
+OPTIONAL MATCH (e5:QualityEvent)
+WHERE n:QualityEvent AND e5 = n
+WITH collect(e1) + collect(eSupplier) + collect(eMaterial) + collect(eProduction)
+  + collect(e2) + collect(e3) + collect(eOrder) + collect(e4) + collect(e5) AS raw
 UNWIND raw AS eventNode
 WITH DISTINCT eventNode
 WHERE eventNode IS NOT NULL

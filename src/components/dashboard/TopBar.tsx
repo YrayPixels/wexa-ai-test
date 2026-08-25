@@ -4,9 +4,13 @@ import type { DashboardSection } from "@/lib/types";
 
 const sectionLabels: Record<DashboardSection, string> = {
   events: "Events",
+  suppliers: "Suppliers",
+  materials: "Materials",
   batches: "Batches",
+  production: "Production",
   products: "Products",
   shipments: "Shipments",
+  orders: "Orders",
   customers: "Customers",
 };
 

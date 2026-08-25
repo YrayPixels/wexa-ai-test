@@ -7,9 +7,13 @@ const catalogItems: Array<{
   label: string;
   hint: string;
 }> = [
+  { id: "suppliers", label: "Suppliers", hint: "Upstream vendors" },
+  { id: "materials", label: "Materials", hint: "Raw ingredients" },
   { id: "batches", label: "Batches", hint: "Material batches" },
+  { id: "production", label: "Production", hint: "Production batches" },
   { id: "products", label: "Products", hint: "Finished goods" },
   { id: "shipments", label: "Shipments", hint: "Outbound logistics" },
+  { id: "orders", label: "Orders", hint: "Customer orders" },
   { id: "customers", label: "Customers", hint: "Order recipients" },
 ];
 
@@ -28,11 +32,47 @@ function NavIcon({ id }: { id: DashboardSection }) {
           />
         </svg>
       );
+    case "suppliers":
+      return (
+        <svg {...common} aria-hidden>
+          <path
+            d="M3 11.5V6l5-2.5L13 6v5.5L8 14l-5-2.5Z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <path d="M8 8.5v5.5" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      );
+    case "materials":
+      return (
+        <svg {...common} aria-hidden>
+          <path
+            d="M4 4.5h8v7H4z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <path d="M6 4.5V3.5h4v1" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      );
     case "batches":
       return (
         <svg {...common} aria-hidden>
           <rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" />
           <path d="M3 7h10M7 3v10" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      );
+    case "production":
+      return (
+        <svg {...common} aria-hidden>
+          <path
+            d="M2.5 12.5h11M4 12.5V7l3 2 2.5-3.5 2.5 3V12.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       );
     case "products":
@@ -57,6 +97,23 @@ function NavIcon({ id }: { id: DashboardSection }) {
           />
           <circle cx="5" cy="12" r="1.2" fill="currentColor" />
           <circle cx="10" cy="12" r="1.2" fill="currentColor" />
+        </svg>
+      );
+    case "orders":
+      return (
+        <svg {...common} aria-hidden>
+          <path
+            d="M4 3.5h8v9H4z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M6 6h4M6 8.5h4M6 11h2.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
         </svg>
       );
     case "customers":
