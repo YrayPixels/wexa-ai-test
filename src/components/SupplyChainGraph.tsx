@@ -600,6 +600,7 @@ export function SupplyChainGraphView({
   onSelect,
   title = "Connection graph",
   subtitle = "Upstream and downstream relationships for this entity",
+  heightClass = "h-[560px]",
 }: {
   graph: SupplyChainGraph;
   selectedId?: string | null;
@@ -607,6 +608,7 @@ export function SupplyChainGraphView({
   onSelect?: (nodeId: string) => void;
   title?: string;
   subtitle?: string;
+  heightClass?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const canExpand = graph.nodes.length > 1;
@@ -648,7 +650,9 @@ export function SupplyChainGraphView({
           </div>
         </div>
         {graph.nodes.length <= 1 ? (
-          <div className="flex h-[480px] items-center justify-center px-6 text-center text-sm text-muted">
+          <div
+            className={`flex items-center justify-center px-6 text-center text-sm text-muted ${heightClass}`}
+          >
             No connected entities found for this item in the supply-chain graph.
           </div>
         ) : (
@@ -657,7 +661,7 @@ export function SupplyChainGraphView({
             selectedId={selectedId}
             focusId={focusId}
             onSelect={onSelect}
-            className="h-[560px] w-full"
+            className={`${heightClass} w-full`}
           />
         )}
       </div>

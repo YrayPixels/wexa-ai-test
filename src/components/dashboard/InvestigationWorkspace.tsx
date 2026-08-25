@@ -162,20 +162,21 @@ export function InvestigationWorkspace({
         </div>
       ) : null}
 
+      <ImpactHeroCard event={detail.event} impact={detail.impact} />
+
+      <div id="impact-graph">
+        <SupplyChainGraphView
+          graph={detail.graph}
+          selectedId={nodeId}
+          focusId={detail.event.id}
+          onSelect={setNodeId}
+          title="Impact path"
+          subtitle="Blast radius from this quality event"
+          heightClass="h-[min(72vh,720px)]"
+        />
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-7">
-          <ImpactHeroCard event={detail.event} impact={detail.impact} />
-        </div>
-        <div className="lg:col-span-5" id="impact-graph">
-          <SupplyChainGraphView
-            graph={detail.graph}
-            selectedId={nodeId}
-            focusId={detail.event.id}
-            onSelect={setNodeId}
-            title="Impact path"
-            subtitle="Blast radius from this quality event"
-          />
-        </div>
         <div className="lg:col-span-3">
           <EventStatusCard event={detail.event} />
         </div>
