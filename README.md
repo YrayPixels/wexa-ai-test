@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TRACE
 
-## Getting Started
+Product recall & supply chain investigation — Wexa AI take-home.
 
-First, run the development server:
+When a batch is compromised, TRACE walks the supply-chain graph to show production impact, affected products, shipments, orders, and customers.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Stack
+
+- Next.js (App Router) + TypeScript + Tailwind
+- CognoDB via official Neo4j JavaScript driver
+- React Flow for graph visualization
+- Vercel-ready deployment
+
+## Graph model
+
+```text
+Supplier -[:SUPPLIES]-> Material -[:HAS_BATCH]-> MaterialBatch
+  -[:USED_IN]-> ProductionBatch -[:PRODUCES]-> Product
+  -[:SHIPPED_IN]-> Shipment -[:FULFILLS]-> Order -[:PLACED_BY]-> Customer
+
+QualityEvent -[:AFFECTS]-> MaterialBatch
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Hero demo path: **QE-001 / RM-2047** contamination investigation.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Create a CognoDB free instance and copy the Bolt URI + password.
+2. Configure env:
 
-## Learn More
+```bash
+cp .env.example .env.local
+```
 
-To learn more about Next.js, take a look at the following resources:
+```env
+COGNODB_URI=bolt+s://<instance-id>.databases.cognodb.cloud
+COGNODB_USERNAME=cognodb
+COGNODB_PASSWORD=<secret>
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. Install, seed, run:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm install
+npm run seed
+npm run dev
+```
 
-## Deploy on Vercel
+Open [http://localhost:3000](http://localhost:3000).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Local app |
+| `npm run seed` | Wipe + load demo graph |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint |
+
+## Notes
+
+- All Cypher uses parameters — never string-concatenated user input.
+- UI never talks to CognoDB directly; only API / server code uses the driver.
+- Seed always recreates the QE-001 → RM-2047 impact path for demos.
