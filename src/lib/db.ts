@@ -1,3 +1,5 @@
+import "server-only";
+
 import neo4j, { Driver, Session, Integer } from "neo4j-driver";
 
 declare global {

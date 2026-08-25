@@ -5,11 +5,13 @@ import type { EntityDetail, TraceStep } from "@/lib/types";
 export function NodeDetailsPanel({
   entity,
   upstream,
+  upstreamError,
   loadingUpstream,
   onTraceUpstream,
 }: {
   entity: EntityDetail | null;
   upstream: TraceStep[] | null;
+  upstreamError?: string | null;
   loadingUpstream: boolean;
   onTraceUpstream: () => void;
 }) {
@@ -69,6 +71,12 @@ export function NodeDetailsPanel({
         >
           {loadingUpstream ? "Tracing upstream…" : "Trace upstream"}
         </button>
+      ) : null}
+
+      {upstreamError ? (
+        <p className="mt-4 rounded-xl border border-critical/25 bg-critical-soft/40 px-3 py-2 text-sm text-critical">
+          {upstreamError}
+        </p>
       ) : null}
 
       {upstream && upstream.length > 0 ? (

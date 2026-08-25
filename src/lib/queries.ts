@@ -40,14 +40,18 @@ RETURN
 
 export const IMPACT_GRAPH = `
 MATCH (event:QualityEvent {id: $eventId})-[:AFFECTS]->(batch:MaterialBatch)
+OPTIONAL MATCH upPath =
+  (batch)<-[:HAS_BATCH]-(:Material)<-[:SUPPLIES]-(:Supplier)
 OPTIONAL MATCH path =
   (batch)-[:USED_IN]->(:ProductionBatch)
   -[:PRODUCES]->(:Product)
   -[:SHIPPED_IN]->(:Shipment)
   -[:FULFILLS]->(:Order)
   -[:PLACED_BY]->(:Customer)
-WITH event, batch, collect(path)[0..80] AS paths
-RETURN event, batch, paths
+WITH event, batch,
+  collect(DISTINCT upPath)[0..5] AS upPaths,
+  collect(path)[0..80] AS downPaths
+RETURN event, batch, upPaths + downPaths AS paths
 `;
 
 export const REVERSE_TRACE = `
@@ -155,15 +159,19 @@ MATCH (production:ProductionBatch)
 OPTIONAL MATCH (batch:MaterialBatch)-[:USED_IN]->(production)
 OPTIONAL MATCH (production)-[:PRODUCES]->(product:Product)
 OPTIONAL MATCH (event:QualityEvent)-[:AFFECTS]->(batch)
+WITH production,
+  batch,
+  collect(DISTINCT product) AS products,
+  collect(DISTINCT event { .id, .type, .severity }) AS events
 RETURN production {
   .id, .batchNumber, .productionDate, .facility
 } AS production,
-product.sku AS productSku,
-product.name AS productName,
+[p IN products WHERE p IS NOT NULL | p.sku] AS productSkus,
+[p IN products WHERE p IS NOT NULL | p.name] AS productNames,
 batch.batchNumber AS materialBatch,
-collect(DISTINCT event { .id, .type, .severity }) AS events
+[e IN events WHERE e IS NOT NULL] AS events
 ORDER BY
-  CASE WHEN size([e IN events WHERE e IS NOT NULL]) > 0 THEN 0 ELSE 1 END,
+  CASE WHEN size(events) > 0 THEN 0 ELSE 1 END,
   production.batchNumber
 `;
 

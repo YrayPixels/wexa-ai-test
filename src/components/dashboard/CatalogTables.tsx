@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CommonUpstreamModal } from "@/components/dashboard/CommonUpstreamModal";
 import { EventPills, SmartDataTable } from "@/components/dashboard/DataTable";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { ErrorState, LoadingState } from "@/components/States";
@@ -685,6 +686,8 @@ export function ProductsTable({
   const [rows, setRows] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -732,72 +735,102 @@ export function ProductsTable({
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
-    <SmartDataTable
-      rows={rows}
-      toolbarLabel="Products table"
-      searchPlaceholder="Search SKU, name, batch…"
-      empty="No products match your search or filters."
-      onRowClick={(product) => router.push(`/products/${product.id}`)}
-      searchFn={(product, q) =>
-        [
-          product.id,
-          product.sku,
-          product.name,
-          product.category,
-          product.materialBatch,
-          ...product.events.map((e) => e.id),
-        ]
-          .join(" ")
-          .toLowerCase()
-          .includes(q)
-      }
-      filters={filters}
-      filterFn={(product, selected) => {
-        if (selected.category !== "all" && product.category !== selected.category) {
-          return false;
+    <>
+      <SmartDataTable
+        rows={rows}
+        toolbarLabel="Products table"
+        searchPlaceholder="Search SKU, name, batch…"
+        empty="No products match your search or filters."
+        onRowClick={(product) => router.push(`/products/${product.id}`)}
+        selectable
+        selectedIds={selectedIds}
+        onSelectedIdsChange={setSelectedIds}
+        selectionActions={
+          <>
+            <button
+              type="button"
+              disabled={selectedIds.length < 2}
+              onClick={() => setModalOpen(true)}
+              className="rounded-full bg-ink px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-accent disabled:opacity-40"
+            >
+              Find common upstream
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="text-xs font-medium text-muted underline-offset-2 hover:text-ink hover:underline"
+            >
+              Clear selection
+            </button>
+          </>
         }
-        if (selected.affected === "linked" && product.events.length === 0) return false;
-        if (selected.affected === "clear" && product.events.length > 0) return false;
-        return true;
-      }}
-      columns={[
-        {
-          id: "sku",
-          header: "SKU",
-          cell: (product) => (
-            <span className="font-mono text-xs">{product.sku}</span>
-          ),
-        },
-        {
-          id: "name",
-          header: "Product",
-          cell: (product) => (
-            <span className="font-semibold text-ink">{product.name}</span>
-          ),
-        },
-        {
-          id: "category",
-          header: "Category",
-          cell: (product) => <span className="text-muted">{product.category}</span>,
-        },
-        {
-          id: "batch",
-          header: "Material batch",
-          cell: (product) => (
-            <span className="font-mono text-xs text-muted">
-              {product.materialBatch ?? "—"}
-            </span>
-          ),
-        },
-        {
-          id: "events",
-          header: "Linked events",
-          cell: (product) => (
-            <EventPills events={product.events} onOpenEvent={onOpenEvent} />
-          ),
-        },
-      ]}
-    />
+        searchFn={(product, q) =>
+          [
+            product.id,
+            product.sku,
+            product.name,
+            product.category,
+            product.materialBatch,
+            ...product.events.map((e) => e.id),
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(q)
+        }
+        filters={filters}
+        filterFn={(product, selected) => {
+          if (selected.category !== "all" && product.category !== selected.category) {
+            return false;
+          }
+          if (selected.affected === "linked" && product.events.length === 0) return false;
+          if (selected.affected === "clear" && product.events.length > 0) return false;
+          return true;
+        }}
+        columns={[
+          {
+            id: "sku",
+            header: "SKU",
+            cell: (product) => (
+              <span className="font-mono text-xs">{product.sku}</span>
+            ),
+          },
+          {
+            id: "name",
+            header: "Product",
+            cell: (product) => (
+              <span className="font-semibold text-ink">{product.name}</span>
+            ),
+          },
+          {
+            id: "category",
+            header: "Category",
+            cell: (product) => <span className="text-muted">{product.category}</span>,
+          },
+          {
+            id: "batch",
+            header: "Material batch",
+            cell: (product) => (
+              <span className="font-mono text-xs text-muted">
+                {product.materialBatch ?? "—"}
+              </span>
+            ),
+          },
+          {
+            id: "events",
+            header: "Linked events",
+            cell: (product) => (
+              <EventPills events={product.events} onOpenEvent={onOpenEvent} />
+            ),
+          },
+        ]}
+      />
+      <CommonUpstreamModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        products={rows}
+        productIds={selectedIds}
+      />
+    </>
   );
 }
 

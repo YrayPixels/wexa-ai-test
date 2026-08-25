@@ -67,6 +67,10 @@ export function SmartDataTable<T extends { id: string }>({
   onRowClick,
   activeId,
   toolbarLabel,
+  selectable = false,
+  selectedIds,
+  onSelectedIdsChange,
+  selectionActions,
 }: {
   rows: T[];
   columns: TableColumn<T>[];
@@ -79,6 +83,10 @@ export function SmartDataTable<T extends { id: string }>({
   onRowClick?: (row: T) => void;
   activeId?: string | null;
   toolbarLabel?: string;
+  selectable?: boolean;
+  selectedIds?: string[];
+  onSelectedIdsChange?: (ids: string[]) => void;
+  selectionActions?: ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>(
@@ -86,6 +94,10 @@ export function SmartDataTable<T extends { id: string }>({
   );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
+  const selected = useMemo(
+    () => new Set(selectedIds ?? []),
+    [selectedIds],
+  );
 
   useEffect(() => {
     setPage(1);
@@ -116,6 +128,31 @@ export function SmartDataTable<T extends { id: string }>({
     setSelectedFilters(Object.fromEntries(filters.map((f) => [f.id, "all"])));
   };
 
+  const pageSelectedCount = pageRows.filter((row) => selected.has(row.id)).length;
+  const allPageSelected =
+    pageRows.length > 0 && pageSelectedCount === pageRows.length;
+
+  const toggleRow = (id: string) => {
+    if (!onSelectedIdsChange) return;
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onSelectedIdsChange(Array.from(next));
+  };
+
+  const togglePage = () => {
+    if (!onSelectedIdsChange) return;
+    const next = new Set(selected);
+    if (allPageSelected) {
+      for (const row of pageRows) next.delete(row.id);
+    } else {
+      for (const row of pageRows) next.add(row.id);
+    }
+    onSelectedIdsChange(Array.from(next));
+  };
+
+  const colSpan = columns.length + (selectable ? 1 : 0);
+
   return (
     <div className="dashboard-card overflow-hidden animate-fade-up">
       <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:px-5">
@@ -137,18 +174,31 @@ export function SmartDataTable<T extends { id: string }>({
                   · filtered from {rows.length}
                 </span>
               ) : null}
+              {selectable && selected.size > 0 ? (
+                <span className="text-muted">
+                  {" "}
+                  ·{" "}
+                  <span className="font-semibold tabular-nums text-ink">
+                    {selected.size}
+                  </span>{" "}
+                  selected
+                </span>
+              ) : null}
             </p>
           </div>
 
-          {(query || activeFilterCount > 0) && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-xs font-medium text-accent hover:underline"
-            >
-              Clear search & filters
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {selectable && selected.size > 0 ? selectionActions : null}
+            {(query || activeFilterCount > 0) && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-xs font-medium text-accent hover:underline"
+              >
+                Clear search & filters
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -199,6 +249,22 @@ export function SmartDataTable<T extends { id: string }>({
         <table className="min-w-full text-left text-sm">
           <thead className="bg-surface-muted/60 font-mono text-[10px] tracking-[0.14em] text-muted uppercase">
             <tr>
+              {selectable ? (
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allPageSelected}
+                    ref={(el) => {
+                      if (el) {
+                        el.indeterminate =
+                          pageSelectedCount > 0 && !allPageSelected;
+                      }
+                    }}
+                    onChange={togglePage}
+                    aria-label="Select page rows"
+                  />
+                </th>
+              ) : null}
               {columns.map((column) => (
                 <th
                   key={column.id}
@@ -213,31 +279,51 @@ export function SmartDataTable<T extends { id: string }>({
             {pageRows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={columns.length}
+                  colSpan={colSpan}
                   className="px-4 py-12 text-center text-sm text-muted"
                 >
                   {empty}
                 </td>
               </tr>
             ) : (
-              pageRows.map((row) => (
-                <tr
-                  key={row.id}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  className={`border-t border-border/70 transition ${
-                    onRowClick ? "cursor-pointer hover:bg-accent-soft/40" : ""
-                  } ${activeId === row.id ? "bg-accent-soft/50" : ""}`}
-                >
-                  {columns.map((column) => (
-                    <td
-                      key={column.id}
-                      className={`px-4 py-3 align-middle ${column.className ?? ""}`}
-                    >
-                      {column.cell(row)}
-                    </td>
-                  ))}
-                </tr>
-              ))
+              pageRows.map((row) => {
+                const isSelected = selected.has(row.id);
+                return (
+                  <tr
+                    key={row.id}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    className={`border-t border-border/70 transition ${
+                      onRowClick ? "cursor-pointer hover:bg-accent-soft/40" : ""
+                    } ${
+                      activeId === row.id || isSelected
+                        ? "bg-accent-soft/50"
+                        : ""
+                    }`}
+                  >
+                    {selectable ? (
+                      <td
+                        className="w-10 px-4 py-3 align-middle"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleRow(row.id)}
+                          aria-label={`Select ${row.id}`}
+                        />
+                      </td>
+                    ) : null}
+                    {columns.map((column) => (
+                      <td
+                        key={column.id}
+                        className={`px-4 py-3 align-middle ${column.className ?? ""}`}
+                      >
+                        {column.cell(row)}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

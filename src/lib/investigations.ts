@@ -1,7 +1,10 @@
+import "server-only";
+
 import { propsOf, toNumber, withSession } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { graphFromPaths, nodeSubtitle, nodeTitle, pickLabel } from "@/lib/graph";
 import {
+  COMMON_UPSTREAM,
   ENTITY_BY_ID,
   GET_INVESTIGATION,
   IMPACT_GRAPH,
@@ -10,9 +13,11 @@ import {
   REVERSE_TRACE,
 } from "@/lib/queries";
 import type {
+  CommonUpstreamMatch,
   EntityDetail,
   ImpactSummary,
   InvestigationDetail,
+  NodeLabel,
   QualityEvent,
   TraceStep,
 } from "@/lib/types";
@@ -156,14 +161,60 @@ export async function reverseTrace(productId: string): Promise<TraceStep[]> {
     pushNode(product);
 
     if (path?.segments) {
-      // Walk upstream: each segment end→start is reverse of PRODUCES/USED_IN etc.
       // Path is already upstream direction from query (product <- ... <- supplier)
       for (const segment of path.segments) {
         pushNode(segment.end);
       }
     }
 
+    if (steps.length <= 1) {
+      throw new AppError(
+        "No upstream supply-chain path found for this product.",
+        404,
+        "NO_UPSTREAM",
+      );
+    }
+
     return steps;
+  });
+}
+
+export async function findCommonUpstream(
+  productIds: string[],
+): Promise<CommonUpstreamMatch[]> {
+  const uniqueIds = Array.from(
+    new Set(productIds.map((id) => id.trim()).filter(Boolean)),
+  );
+  if (uniqueIds.length < 2) {
+    throw new AppError(
+      "Select at least two products to find shared upstream nodes.",
+      400,
+      "BAD_REQUEST",
+    );
+  }
+
+  return withSession(async (session) => {
+    const result = await session.run(COMMON_UPSTREAM, {
+      productIds: uniqueIds,
+    });
+
+    return result.records.map((record) => {
+      const node = record.get("common") as {
+        labels?: string[];
+        properties: Record<string, unknown>;
+      };
+      const labels = (record.get("labels") as string[]) ?? node.labels ?? [];
+      const label = pickLabel(labels) as NodeLabel;
+      const properties = propsOf(node.properties);
+      return {
+        id: String(properties.id ?? ""),
+        label,
+        title: nodeTitle(label, properties),
+        subtitle: nodeSubtitle(label, properties),
+        sharedBy: toNumber(record.get("sharedBy")),
+        properties,
+      };
+    });
   });
 }
 

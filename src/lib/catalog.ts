@@ -1,3 +1,5 @@
+import "server-only";
+
 import { propsOf, toNumber, withSession } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import {
@@ -150,17 +152,19 @@ export async function listProduction(): Promise<ProductionRow[]> {
     const result = await session.run(LIST_PRODUCTION);
     return result.records.map((record) => {
       const production = propsOf(record.get("production"));
+      const productSkus = ((record.get("productSkus") as unknown[]) ?? [])
+        .map((value) => String(value))
+        .filter(Boolean);
+      const productNames = ((record.get("productNames") as unknown[]) ?? [])
+        .map((value) => String(value))
+        .filter(Boolean);
       return {
         id: String(production.id),
         batchNumber: String(production.batchNumber ?? ""),
         productionDate: String(production.productionDate ?? ""),
         facility: String(production.facility ?? ""),
-        productSku: record.get("productSku")
-          ? String(record.get("productSku"))
-          : null,
-        productName: record.get("productName")
-          ? String(record.get("productName"))
-          : null,
+        productSku: productSkus.length > 0 ? productSkus.join(", ") : null,
+        productName: productNames.length > 0 ? productNames.join(", ") : null,
         materialBatch: record.get("materialBatch")
           ? String(record.get("materialBatch"))
           : null,

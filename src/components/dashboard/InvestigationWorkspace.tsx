@@ -67,6 +67,7 @@ export function InvestigationWorkspace({
   const [nodeId, setNodeId] = useState<string | null>(null);
   const [entity, setEntity] = useState<EntityDetail | null>(null);
   const [upstream, setUpstream] = useState<TraceStep[] | null>(null);
+  const [upstreamError, setUpstreamError] = useState<string | null>(null);
   const [loadingUpstream, setLoadingUpstream] = useState(false);
 
   const load = useCallback(async (id: string) => {
@@ -75,6 +76,7 @@ export function InvestigationWorkspace({
     setNodeId(null);
     setEntity(null);
     setUpstream(null);
+    setUpstreamError(null);
     try {
       const response = await fetch(`/api/investigations/${id}`);
       const payload = await response.json();
@@ -100,10 +102,12 @@ export function InvestigationWorkspace({
     if (!nodeId) {
       setEntity(null);
       setUpstream(null);
+      setUpstreamError(null);
       return;
     }
     let active = true;
     setUpstream(null);
+    setUpstreamError(null);
     fetch(`/api/entities/${nodeId}`)
       .then(async (response) => {
         const payload = await response.json();
@@ -121,15 +125,24 @@ export function InvestigationWorkspace({
   const onTraceUpstream = async () => {
     if (!entity || entity.label !== "Product") return;
     setLoadingUpstream(true);
+    setUpstreamError(null);
+    setUpstream(null);
     try {
       const response = await fetch(
         `/api/trace?productId=${encodeURIComponent(entity.id)}`,
       );
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error);
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to trace upstream");
+      }
       setUpstream(payload.steps as TraceStep[]);
-    } catch {
-      setUpstream([]);
+    } catch (err) {
+      setUpstream(null);
+      setUpstreamError(
+        err instanceof Error
+          ? err.message
+          : "Unable to trace upstream for this product.",
+      );
     } finally {
       setLoadingUpstream(false);
     }
@@ -173,6 +186,7 @@ export function InvestigationWorkspace({
           <NodeDetailsPanel
             entity={entity}
             upstream={upstream}
+            upstreamError={upstreamError}
             loadingUpstream={loadingUpstream}
             onTraceUpstream={() => void onTraceUpstream()}
           />

@@ -302,13 +302,32 @@ function GraphCanvas({
 }) {
   const router = useRouter();
   const { fitView } = useReactFlow();
+  const [hiddenLabels, setHiddenLabels] = useState<Set<NodeLabel>>(
+    () => new Set(),
+  );
+
+  const presentLabels = useMemo(() => {
+    const seen = new Set(graph.nodes.map((n) => n.label));
+    return LEGEND_ORDER.filter((label) => seen.has(label));
+  }, [graph.nodes]);
+
+  const visibleGraph = useMemo(() => {
+    if (hiddenLabels.size === 0) return graph;
+    const nodes = graph.nodes.filter((node) => !hiddenLabels.has(node.label));
+    const visibleIds = new Set(nodes.map((node) => node.id));
+    const edges = graph.edges.filter(
+      (edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target),
+    );
+    return { nodes, edges };
+  }, [graph, hiddenLabels]);
+
   const focusId = useMemo(
-    () => pickFocusId(graph, focusIdProp ?? selectedId),
-    [graph, focusIdProp, selectedId],
+    () => pickFocusId(visibleGraph, focusIdProp ?? selectedId),
+    [visibleGraph, focusIdProp, selectedId],
   );
   const { nodes, edges } = useMemo(
-    () => buildRadialLayout(graph, focusId),
-    [graph, focusId],
+    () => buildRadialLayout(visibleGraph, focusId),
+    [visibleGraph, focusId],
   );
 
   const decoratedNodes = useMemo(
@@ -323,21 +342,28 @@ function GraphCanvas({
     [nodes, selectedId, focusId],
   );
 
-  const presentLabels = useMemo(() => {
-    const seen = new Set(graph.nodes.map((n) => n.label));
-    return LEGEND_ORDER.filter((label) => seen.has(label));
-  }, [graph.nodes]);
-
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void fitView({ padding: 0.22, duration: 280 });
     }, 80);
     return () => window.clearTimeout(timer);
-  }, [focusId, fitView, graph.nodes.length, graph.edges.length]);
+  }, [focusId, fitView, visibleGraph.nodes.length, visibleGraph.edges.length]);
 
   const onReset = useCallback(() => {
+    setHiddenLabels(new Set());
     void fitView({ padding: 0.22, duration: 320 });
   }, [fitView]);
+
+  const toggleLabel = useCallback((label: NodeLabel) => {
+    setHiddenLabels((current) => {
+      const next = new Set(current);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      // Keep at least one label visible
+      if (next.size >= presentLabels.length) return current;
+      return next;
+    });
+  }, [presentLabels.length]);
 
   const onOpen = useCallback(
     (node: GraphNode | TraceNodeData) => {
@@ -374,19 +400,47 @@ function GraphCanvas({
           showInteractive={false}
           className="!m-4 !overflow-hidden !rounded-xl !border !border-border !bg-white !shadow-sm [&>button]:!border-border [&>button]:!bg-white [&>button]:!fill-ink [&>button]:hover:!bg-surface-muted"
         />
-        <Panel position="top-left" className="m-4">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-border/80 bg-white/90 px-3 py-2 shadow-sm backdrop-blur-sm">
-            {presentLabels.map((label) => (
-              <div key={label} className="flex items-center gap-1.5">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: labelColors[label] }}
-                />
-                <span className="font-mono text-[10px] tracking-[0.14em] text-muted uppercase">
-                  {formatLabel(label)}
-                </span>
-              </div>
-            ))}
+        <Panel position="top-left" className="m-4 max-w-[220px]">
+          <div className="rounded-xl border border-border/80 bg-white/95 p-3 shadow-sm backdrop-blur-sm">
+            <p className="mb-2 font-mono text-[10px] tracking-[0.16em] text-muted uppercase">
+              Legend
+            </p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {presentLabels.map((label) => {
+                const active = !hiddenLabels.has(label);
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => toggleLabel(label)}
+                    aria-pressed={active}
+                    title={
+                      active
+                        ? `Hide ${formatLabel(label)}`
+                        : `Show ${formatLabel(label)}`
+                    }
+                    className="flex flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-center transition"
+                    style={{
+                      opacity: active ? 1 : 0.38,
+                      background: active
+                        ? `${labelColors[label]}18`
+                        : "transparent",
+                    }}
+                  >
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ background: labelColors[label] }}
+                    />
+                    <span className="font-mono text-[8px] leading-tight tracking-[0.06em] text-muted uppercase">
+                      {formatLabel(label)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[9px] leading-snug text-muted">
+              Tap a type to hide or show it
+            </p>
           </div>
         </Panel>
         <Panel position="top-right" className="m-4">
@@ -400,7 +454,7 @@ function GraphCanvas({
         </Panel>
         <Panel position="bottom-right" className="m-4">
           <p className="rounded-lg bg-white/80 px-2.5 py-1 font-mono text-[10px] tracking-wide text-muted backdrop-blur-sm">
-            Click to focus · Double-click to open
+            Click legend to filter · Click node to focus · Double-click to open
           </p>
         </Panel>
       </ReactFlow>
@@ -421,10 +475,13 @@ function GraphFrame({
   onSelect?: (nodeId: string) => void;
   className: string;
 }) {
+  const graphKey = `${graph.nodes.length}:${graph.edges.length}:${graph.nodes[0]?.id ?? ""}:${graph.nodes.at(-1)?.id ?? ""}`;
+
   return (
     <div className={className}>
       <ReactFlowProvider>
         <GraphCanvas
+          key={graphKey}
           graph={graph}
           selectedId={selectedId}
           focusId={focusId}

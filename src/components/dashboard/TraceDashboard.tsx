@@ -15,6 +15,7 @@ import {
   ShipmentsTable,
   SuppliersTable,
 } from "@/components/dashboard/CatalogTables";
+import { EmptyState } from "@/components/States";
 import type { DashboardSection, QualityEvent } from "@/lib/types";
 
 function syncUrl(section: DashboardSection, eventId: string | null) {
@@ -34,10 +35,11 @@ function syncUrl(section: DashboardSection, eventId: string | null) {
 export function TraceDashboard({
   initialSection = "events",
   initialEventId,
+  banner,
 }: {
   initialSection?: DashboardSection;
   initialEventId?: string;
-  initialBatchId?: string;
+  banner?: string | null;
 }) {
   const [section, setSection] = useState<DashboardSection>(initialSection);
   const [events, setEvents] = useState<QualityEvent[]>([]);
@@ -149,8 +151,21 @@ export function TraceDashboard({
                 onRetry={() => void loadEvents()}
                 onSelect={openEvent}
               />
+              {banner && !selectedEventId ? (
+                <div className="rounded-[var(--card-radius)] border border-accent/20 bg-accent-soft px-4 py-3 text-sm text-ink">
+                  {banner}
+                </div>
+              ) : null}
               {selectedEventId ? (
-                <InvestigationWorkspace eventId={selectedEventId} />
+                <InvestigationWorkspace
+                  eventId={selectedEventId}
+                  banner={banner}
+                />
+              ) : !listLoading && !listError ? (
+                <EmptyState
+                  title="Select an investigation"
+                  body="Choose a quality event above to open blast-radius counts, the impact graph, and entity details."
+                />
               ) : null}
             </>
           ) : null}
@@ -199,7 +214,7 @@ export function TraceDashboard({
             <>
               <SectionIntro
                 title="Products"
-                body="Finished goods in the graph. Click a row for the product page, or use a linked-event chip to jump into an investigation."
+                body="Finished goods in the graph. Select two or more rows, then find common upstream. Click a row to open the product page."
               />
               <ProductsTable onOpenEvent={openEvent} />
             </>

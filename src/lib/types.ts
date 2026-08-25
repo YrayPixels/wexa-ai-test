@@ -58,6 +58,15 @@ export interface TraceStep {
   subtitle?: string;
 }
 
+export interface CommonUpstreamMatch {
+  id: string;
+  label: NodeLabel;
+  title: string;
+  subtitle?: string;
+  sharedBy: number;
+  properties: Record<string, unknown>;
+}
+
 export interface InvestigationDetail {
   event: QualityEvent;
   impact: ImpactSummary;

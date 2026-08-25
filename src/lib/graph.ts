@@ -215,28 +215,3 @@ export function mergeConnectionsIntoGraph(
     edges: Array.from(edges.values()),
   };
 }
-
-export function layoutHint(label: NodeLabel): number {
-  switch (label) {
-    case "QualityEvent":
-      return 0;
-    case "MaterialBatch":
-      return 1;
-    case "ProductionBatch":
-      return 2;
-    case "Product":
-      return 3;
-    case "Shipment":
-      return 4;
-    case "Order":
-      return 5;
-    case "Customer":
-      return 6;
-    case "Material":
-      return -1;
-    case "Supplier":
-      return -2;
-    default:
-      return 3;
-  }
-}
