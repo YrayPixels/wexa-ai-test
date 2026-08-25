@@ -6,7 +6,7 @@ export function EmptyState({
   body: string;
 }) {
   return (
-    <div className="border border-dashed border-border bg-surface/70 px-6 py-10 text-center">
+    <div className="dashboard-card px-6 py-12 text-center">
       <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold text-ink">
         {title}
       </h2>
@@ -25,7 +25,7 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="border border-critical/30 bg-critical-soft/40 px-6 py-8">
+    <div className="rounded-[var(--card-radius)] border border-critical/25 bg-critical-soft/50 px-6 py-8">
       <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold text-critical">
         Unable to connect to TRACE
       </h2>
@@ -37,7 +37,7 @@ export function ErrorState({
         <button
           type="button"
           onClick={onRetry}
-          className="mt-5 bg-ink px-4 py-2 text-sm font-medium text-surface hover:bg-accent"
+          className="mt-5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-accent"
         >
           Retry
         </button>
@@ -48,7 +48,7 @@ export function ErrorState({
 
 export function LoadingState({ label = "Loading…" }: { label?: string }) {
   return (
-    <div className="border border-border bg-surface px-6 py-10">
+    <div className="dashboard-card px-6 py-12">
       <p className="animate-pulse-soft font-mono text-sm text-muted">{label}</p>
     </div>
   );

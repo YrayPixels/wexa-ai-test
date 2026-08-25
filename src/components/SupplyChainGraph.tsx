@@ -26,26 +26,26 @@ type TraceNodeData = {
 };
 
 const labelColors: Record<NodeLabel, string> = {
-  QualityEvent: "#be123c",
-  MaterialBatch: "#0f766e",
-  ProductionBatch: "#1d4ed8",
-  Product: "#0b1520",
-  Shipment: "#4d5d6d",
-  Order: "#64748b",
-  Customer: "#334155",
-  Material: "#0f766e",
-  Supplier: "#115e59",
+  QualityEvent: "#e11d48",
+  MaterialBatch: "#ff6a00",
+  ProductionBatch: "#2563eb",
+  Product: "#0a0a0a",
+  Shipment: "#6b7280",
+  Order: "#78716c",
+  Customer: "#44403c",
+  Material: "#ea580c",
+  Supplier: "#c2410c",
 };
 
 function TraceNode({ data }: NodeProps<Node<TraceNodeData>>) {
-  const color = labelColors[data.label] ?? "#0b1520";
+  const color = labelColors[data.label] ?? "#0a0a0a";
 
   return (
     <div
-      className="min-w-[140px] max-w-[180px] border bg-surface px-3 py-2 shadow-sm"
+      className="min-w-[140px] max-w-[180px] rounded-2xl border bg-surface px-3 py-2.5 shadow-sm"
       style={{
         borderColor: data.selected ? color : "var(--border)",
-        boxShadow: data.selected ? `0 0 0 2px ${color}33` : undefined,
+        boxShadow: data.selected ? `0 0 0 3px ${color}22` : undefined,
       }}
     >
       <Handle type="target" position={Position.Top} className="!bg-border !w-2 !h-2" />
@@ -106,13 +106,13 @@ function buildLayout(graph: SupplyChainGraph): {
     label: edge.type,
     type: "smoothstep",
     markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
-    style: { stroke: "#94a3b8", strokeWidth: 1.5 },
+    style: { stroke: "#c4c9d1", strokeWidth: 1.5 },
     labelStyle: {
-      fill: "#64748b",
+      fill: "#6b7280",
       fontSize: 10,
       fontFamily: "IBM Plex Mono, monospace",
     },
-    labelBgStyle: { fill: "#f7fafc", fillOpacity: 0.9 },
+    labelBgStyle: { fill: "#ffffff", fillOpacity: 0.92 },
   }));
 
   return { nodes, edges };
@@ -142,21 +142,35 @@ export function SupplyChainGraphView({
   );
 
   return (
-    <div className="h-[480px] w-full overflow-hidden border border-border bg-surface">
-      <ReactFlow
-        nodes={decoratedNodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        minZoom={0.35}
-        maxZoom={1.4}
-        onNodeClick={(_, node) => onSelect?.(node.id)}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background gap={20} color="#c5d0db" />
-        <Controls showInteractive={false} />
-      </ReactFlow>
+    <div className="dashboard-card h-full min-h-[420px] w-full overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div>
+          <p className="font-mono text-[10px] tracking-[0.16em] text-muted uppercase">
+            Supply chain graph
+          </p>
+          <p className="text-sm font-medium text-ink">Impact path visualization</p>
+        </div>
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="animate-pulse-ring absolute inline-flex h-full w-full rounded-full bg-accent/60" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" />
+        </span>
+      </div>
+      <div className="h-[calc(100%-57px)] min-h-[360px]">
+        <ReactFlow
+          nodes={decoratedNodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.2 }}
+          minZoom={0.35}
+          maxZoom={1.4}
+          onNodeClick={(_, node) => onSelect?.(node.id)}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background gap={22} color="#e8eaee" />
+          <Controls showInteractive={false} />
+        </ReactFlow>
+      </div>
     </div>
   );
 }
