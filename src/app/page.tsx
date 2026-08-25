@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { TraceDashboard } from "@/components/dashboard/TraceDashboard";
 import { getEventIdForBatch } from "@/lib/catalog";
 import type { DashboardSection } from "@/lib/types";
@@ -43,17 +44,16 @@ export default async function HomePage({
     }
   }
 
+  if (eventId) {
+    const qs = banner
+      ? `?banner=${encodeURIComponent(banner)}`
+      : "";
+    redirect(`/investigations/${encodeURIComponent(eventId)}${qs}`);
+  }
+
   const section = sections.has(params.section as DashboardSection)
     ? (params.section as DashboardSection)
-    : eventId
-      ? "events"
-      : "events";
+    : "events";
 
-  return (
-    <TraceDashboard
-      initialSection={section}
-      initialEventId={eventId}
-      banner={banner}
-    />
-  );
+  return <TraceDashboard initialSection={section} banner={banner} />;
 }

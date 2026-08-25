@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DashboardSidebar } from "@/components/dashboard/Sidebar";
 import { DashboardTopBar } from "@/components/dashboard/TopBar";
-import { InvestigationWorkspace } from "@/components/dashboard/InvestigationWorkspace";
 import {
   BatchesTable,
   CustomersTable,
@@ -15,15 +15,13 @@ import {
   ShipmentsTable,
   SuppliersTable,
 } from "@/components/dashboard/CatalogTables";
-import { EmptyState } from "@/components/States";
 import type { DashboardSection, QualityEvent } from "@/lib/types";
 
-function syncUrl(section: DashboardSection, eventId: string | null) {
+function syncUrl(section: DashboardSection) {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
   url.searchParams.set("section", section);
-  if (eventId) url.searchParams.set("event", eventId);
-  else url.searchParams.delete("event");
+  url.searchParams.delete("event");
   url.searchParams.delete("batch");
   const next = `${url.pathname}?${url.searchParams.toString()}`;
   const current = `${window.location.pathname}${window.location.search}`;
@@ -34,20 +32,16 @@ function syncUrl(section: DashboardSection, eventId: string | null) {
 
 export function TraceDashboard({
   initialSection = "events",
-  initialEventId,
   banner,
 }: {
   initialSection?: DashboardSection;
-  initialEventId?: string;
   banner?: string | null;
 }) {
+  const router = useRouter();
   const [section, setSection] = useState<DashboardSection>(initialSection);
   const [events, setEvents] = useState<QualityEvent[]>([]);
   const [listError, setListError] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(true);
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(
-    initialEventId ?? null,
-  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const bootstrapped = useRef(false);
 
@@ -62,14 +56,6 @@ export function TraceDashboard({
       }
       const list = (payload.investigations ?? payload) as QualityEvent[];
       setEvents(list);
-
-      setSelectedEventId((current) => {
-        if (current && list.some((e) => e.id === current)) return current;
-        if (initialEventId && list.some((e) => e.id === initialEventId)) {
-          return initialEventId;
-        }
-        return null;
-      });
     } catch (err) {
       setEvents([]);
       setListError(
@@ -80,7 +66,7 @@ export function TraceDashboard({
     } finally {
       setListLoading(false);
     }
-  }, [initialEventId]);
+  }, []);
 
   useEffect(() => {
     if (bootstrapped.current) return;
@@ -89,22 +75,15 @@ export function TraceDashboard({
   }, [loadEvents]);
 
   useEffect(() => {
-    syncUrl(section, selectedEventId);
-  }, [section, selectedEventId]);
-
-  const selectedEvent = useMemo(
-    () => events.find((e) => e.id === selectedEventId) ?? null,
-    [events, selectedEventId],
-  );
+    syncUrl(section);
+  }, [section]);
 
   const openEvent = (eventId: string) => {
-    setSelectedEventId(eventId);
-    setSection("events");
+    router.push(`/investigations/${encodeURIComponent(eventId)}`);
   };
 
   const openSection = (next: DashboardSection) => {
     setSection(next);
-    if (next !== "events") setSelectedEventId(null);
   };
 
   return (
@@ -119,20 +98,6 @@ export function TraceDashboard({
       <div className="flex min-w-0 flex-1 flex-col">
         <DashboardTopBar
           section={section}
-          crumb={section === "events" ? selectedEventId : null}
-          status={section === "events" ? selectedEvent?.status ?? null : null}
-          actionLabel={
-            section === "events" && selectedEventId ? "View impact graph" : null
-          }
-          onAction={
-            section === "events" && selectedEventId
-              ? () => {
-                  document
-                    .getElementById("impact-graph")
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }
-              : undefined
-          }
           onMenuClick={() => setSidebarOpen(true)}
         />
 
@@ -143,30 +108,18 @@ export function TraceDashboard({
                 title="Quality events"
                 body="Focus list for active investigations. Open an event to trace blast radius across production, products, shipments, and customers."
               />
+              {banner ? (
+                <div className="rounded-[var(--card-radius)] border border-accent/20 bg-accent-soft px-4 py-3 text-sm text-ink">
+                  {banner}
+                </div>
+              ) : null}
               <EventsTable
                 events={events}
-                selectedId={selectedEventId}
                 loading={listLoading}
                 error={listError}
                 onRetry={() => void loadEvents()}
                 onSelect={openEvent}
               />
-              {banner && !selectedEventId ? (
-                <div className="rounded-[var(--card-radius)] border border-accent/20 bg-accent-soft px-4 py-3 text-sm text-ink">
-                  {banner}
-                </div>
-              ) : null}
-              {selectedEventId ? (
-                <InvestigationWorkspace
-                  eventId={selectedEventId}
-                  banner={banner}
-                />
-              ) : !listLoading && !listError ? (
-                <EmptyState
-                  title="Select an investigation"
-                  body="Choose a quality event above to open blast-radius counts, the impact graph, and entity details."
-                />
-              ) : null}
             </>
           ) : null}
 

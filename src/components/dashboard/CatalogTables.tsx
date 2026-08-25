@@ -26,14 +26,12 @@ function uniqueSorted(values: Array<string | null | undefined>): string[] {
 
 export function EventsTable({
   events,
-  selectedId,
   loading,
   error,
   onRetry,
   onSelect,
 }: {
   events: QualityEvent[];
-  selectedId: string | null;
   loading: boolean;
   error: string | null;
   onRetry: () => void;
@@ -69,7 +67,6 @@ export function EventsTable({
       rows={events}
       toolbarLabel="Events table"
       searchPlaceholder="Search events, batches, types…"
-      activeId={selectedId}
       empty="No quality events match your search or filters."
       onRowClick={(event) => onSelect(event.id)}
       searchFn={(event, q) =>

@@ -75,7 +75,7 @@ function hrefForNode(label: NodeLabel, id: string): string | null {
     case "Customer":
       return `/customers/${id}`;
     case "QualityEvent":
-      return `/?section=events&event=${encodeURIComponent(id)}`;
+      return `/investigations/${encodeURIComponent(id)}`;
     default:
       return null;
   }

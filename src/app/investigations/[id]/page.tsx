@@ -1,10 +1,13 @@
-import { redirect } from "next/navigation";
+import { InvestigationDetailShell } from "@/components/dashboard/InvestigationDetailShell";
 
 export default async function InvestigationPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ banner?: string }>;
 }) {
   const { id } = await params;
-  redirect(`/?section=events&event=${encodeURIComponent(id)}`);
+  const { banner } = await searchParams;
+  return <InvestigationDetailShell eventId={id} banner={banner ?? null} />;
 }

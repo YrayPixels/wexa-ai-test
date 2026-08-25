@@ -73,7 +73,7 @@ function hrefForNeighbor(label: NodeLabel, id: string): string | null {
     case "Customer":
       return `/customers/${id}`;
     case "QualityEvent":
-      return `/?section=events&event=${encodeURIComponent(id)}`;
+      return `/investigations/${encodeURIComponent(id)}`;
     default:
       return null;
   }
@@ -282,7 +282,7 @@ export function EntityDetailView({
                     <p className="mt-1 text-xs text-muted">{event.status}</p>
                   ) : null}
                   <Link
-                    href={`/?section=events&event=${encodeURIComponent(event.id)}`}
+                    href={`/investigations/${encodeURIComponent(event.id)}`}
                     className="mt-3 inline-flex text-xs font-semibold text-accent hover:underline"
                   >
                     Open event investigation →
